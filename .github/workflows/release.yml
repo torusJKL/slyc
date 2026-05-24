@@ -89,7 +89,7 @@ jobs:
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
-          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
+          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}
           path: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
 
   release:
@@ -99,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all archives
+      - name: Download archives
         uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -114,7 +114,6 @@ jobs:
           ' CHANGELOG.md > release-notes.md
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*.tar.gz
-          body_path: release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" artifacts/*.tar.gz --title "${{ github.ref_name }}" --notes-file release-notes.md
