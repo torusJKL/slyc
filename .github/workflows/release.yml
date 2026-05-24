@@ -27,14 +27,6 @@ jobs:
           sudo mv janet-v1.41.2-linux/bin/janet /usr/local/bin/
           sudo mv janet-v1.41.2-linux/lib/* /usr/local/lib/
 
-      - name: Install jpm
-        run: |
-          git clone --depth=1 https://github.com/janet-lang/jpm.git
-          cd jpm
-          mkdir -p "$HOME/.local/bin"
-          PREFIX="$HOME/.local" janet bootstrap.janet
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
       - name: Setup Quicklisp and Slynk
         run: |
           curl -O https://beta.quicklisp.org/quicklisp.lisp
