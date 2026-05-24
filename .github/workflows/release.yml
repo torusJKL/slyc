@@ -27,12 +27,6 @@ jobs:
           sudo mv janet-v1.41.2-linux/bin/janet /usr/local/bin/
           sudo mv janet-v1.41.2-linux/lib/* /usr/local/lib/
 
-      - name: Install jpm
-        run: |
-          git clone --depth=1 https://github.com/janet-lang/jpm.git
-          cd jpm
-          sudo janet bootstrap.janet
-
       - name: Setup Quicklisp and Slynk
         run: |
           curl -O https://beta.quicklisp.org/quicklisp.lisp
@@ -71,28 +65,29 @@ jobs:
       - name: Install Janet
         run: |
           curl -LO ${{ matrix.janet_url }}
-          tar -xzf ${{ matrix.janet_dir }}.tar.gz
-          echo "$PWD/${{ matrix.janet_dir }}/bin" >> $GITHUB_PATH
+          tar -xzf $(basename ${{ matrix.janet_url }})
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/include/janet" "$HOME/.local/lib"
+          cp "$PWD/${{ matrix.janet_dir }}/bin/janet" "$HOME/.local/bin/"
+          cp "$PWD/${{ matrix.janet_dir }}/include/janet.h" "$HOME/.local/include/janet/"
+          cp "$PWD/${{ matrix.janet_dir }}"/lib/libjanet.* "$HOME/.local/lib/"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install jpm
         run: |
           git clone --depth=1 https://github.com/janet-lang/jpm.git
           cd jpm
           mkdir -p "$HOME/.local/bin"
-          PREFIX="$HOME/.local" janet bootstrap.janet
+          JANET_SYSPATH="$HOME/.local/lib/janet" JANET_MODPATH="$HOME/.local/lib/janet" PREFIX="$HOME/.local" janet bootstrap.janet
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build slyc
         run: jpm build
 
-      - name: Package binary
-        run: tar -czf "slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz" -C build slyc
-
-      - name: Upload archive
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
-          path: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
+          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}
+          path: build/slyc
 
   release:
     needs: build
@@ -101,11 +96,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all archives
+      - name: Download archives
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
 
       - name: Extract release notes from CHANGELOG.md
         run: |
@@ -115,8 +109,13 @@ jobs:
             found
           ' CHANGELOG.md > release-notes.md
 
+      - name: Prepare release assets
+        run: |
+          for dir in artifacts/*/; do
+            cp "$dir/slyc" "$(basename "$dir")"
+          done
+
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*.tar.gz
-          body_path: release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" slyc-* --title "${{ github.ref_name }}" --notes-file release-notes.md
