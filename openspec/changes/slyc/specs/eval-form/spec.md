@@ -65,3 +65,17 @@ The system SHALL print the return value in a human-readable format suitable for 
 
 - **WHEN** the user runs `slyc ":hello"` against a Slynk server
 - **THEN** the system SHALL exit with code 0 and print ":HELLO" to stdout
+
+### Requirement: Accumulate streamed output from `:write-string` messages
+
+The system SHALL accumulate text from zero or more `:write-string` messages received before the final `:return`, and print that accumulated text to stdout along with the evaluation result.
+
+#### Scenario: Multi-message streamed output
+
+- **WHEN** the user runs a form that produces output across multiple `:write-string` messages (e.g., chunked `force-output`) followed by a `:return`
+- **THEN** the system SHALL print all accumulated `:write-string` text to stdout in order, followed by the return value, and exit with code 0
+
+#### Scenario: Extremely large output
+
+- **WHEN** the user runs a form that produces extremely large output spanning many `:write-string` messages or a single large `:return` body
+- **THEN** the system SHALL correctly print all output without truncation, bounded only by available memory

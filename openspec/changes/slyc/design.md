@@ -48,7 +48,11 @@ Approach: Use `:emacs-rex` directly with the user's form, collecting `:write-str
 
 ### Output: Clean text for agents
 
-The client collects all `:write-string` output in order, appends the return value, and writes to stdout. Stderr is reserved for infrastructure errors (connection refused, timeout). Exit codes distinguish success from Lisp errors from infra errors.
+The client collects all `:write-string` output in order into a buffer, appends the return value's output string and the printed result, then writes to stdout. Stderr is reserved for infrastructure errors (connection refused, timeout). Exit codes distinguish success from Lisp errors from infra errors.
+
+### `:write-string` Buffer Accumulation
+
+All `:write-string` messages (regardless of target) are accumulated into a pre-allocated Janet buffer during the response loop. When `:return` arrives, the accumulated buffer is printed first, followed by the return value's output string and result value. This correctly handles multi-message streaming responses where `:write-string` messages are sent before the final `:return`, including extremely large output that spans many messages. The buffer grows dynamically and is memory-bound only by available RAM.
 
 ## Wire Protocol Detail
 
@@ -112,4 +116,4 @@ SERVER RESPONDS (zero or more of each):
 
 - Should we compile via `janet -m` (single jimage) or distribute the source with Janet dependency?
 - Add `--file` for reading form from file? (Post-MVP)
-- Should `:write-string` to `:error-output` go to stderr or stdout? (Currently: all to stdout for agent simplicity)
+- ~~Should `:write-string` to `:error-output` go to stderr or stdout?~~ (Resolved: all to stdout for agent simplicity. All `:write-string` messages are accumulated into a single output buffer regardless of target, then flushed to stdout on `:return`.)

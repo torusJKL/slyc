@@ -32,10 +32,10 @@
 - [x] 5.3 Test timeout: `slyc --timeout 2 "(sleep 10)"` → exit 124 after ~2s
 - [x] 5.4 Test connection refused: `slyc --port 1 "(+ 1 2)"` → exit 2 with stderr
 - [x] 5.5 Test custom flags: --port, --host, --package all work correctly
-- [ ] 5.6 Verify standalone binary: `janet -c main.janet slyc.jimage` produces working image (needs wrapper)
+- [x] 5.6 Verify standalone binary: `janet -c main.janet slyc.jimage` produces working image (needs wrapper)
 
 ## 6. Polishing
 
 - [x] 6.1 Add `--version` flag showing version number
 - [x] 6.2 Handle edge case: empty form argument
-- [ ] 6.3 Handle edge case: extremely large output (multi-message response)
+- [x] 6.3 Handle edge case: extremely large output (multi-message response)

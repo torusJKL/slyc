@@ -93,6 +93,7 @@
 
 (defn- process-responses [stream timeout]
   (var aborted false)
+  (var output-buf (buffer/new 64))
   (while true
     (def result (protect (read-message stream timeout)))
     (match result
@@ -106,7 +107,9 @@
         :new-package nil
         :indentation-update nil
         :ping nil
-        :write-string nil
+        :write-string (do
+          (def [_ text _target] msg)
+          (buffer/push-string output-buf text))
         :debug (do
           (def [_ _ _ condition-info _ _] msg)
           (def err-str (if (tuple? condition-info) (get condition-info 0) "Lisp error"))
@@ -118,6 +121,9 @@
         :reader-error (do (eprint (get msg 2)) (os/exit 2))
         :invalid-rpc (do (eprintf "server error: %s" (get msg 2)) (os/exit 2))
         :return (do
+          (def buf-str (string output-buf))
+          (when (pos? (length buf-str))
+            (print buf-str))
           (def [_ ok-pair _id] msg)
           (def [tag value] ok-pair)
           (if (= tag :ok)
