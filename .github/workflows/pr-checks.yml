@@ -1,0 +1,41 @@
+name: PR-checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sbcl rlwrap
+
+      - name: Install Janet
+        run: |
+          curl -LO https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-linux-x64.tar.gz
+          tar -xzf janet-v1.41.2-linux-x64.tar.gz
+          sudo mv janet-v1.41.2-linux/bin/janet /usr/local/bin/
+          sudo mv janet-v1.41.2-linux/lib/* /usr/local/lib/
+
+      - name: Setup Quicklisp and Slynk
+        run: |
+          curl -O https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --noinform --load quicklisp.lisp \
+               --eval '(quicklisp-quickstart:install :path "~/.quicklisp")' \
+               --eval '(load "~/.quicklisp/setup.lisp")' \
+               --eval '(ql:quickload :slynk :silent t)' \
+               --eval '(quit)'
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Run tests
+        run: just test
