@@ -1,6 +1,6 @@
 (declare-project
   :name "slyc"
-  :version "0.1.0")
+  :version "0.1.1")
 
 (declare-executable
   :name "slyc"

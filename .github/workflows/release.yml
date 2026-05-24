@@ -24,8 +24,8 @@ jobs:
         run: |
           curl -LO https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-linux-x64.tar.gz
           tar -xzf janet-v1.41.2-linux-x64.tar.gz
-          sudo mv janet-v1.41.2-linux-x64/bin/janet /usr/local/bin/
-          sudo mv janet-v1.41.2-linux-x64/lib/* /usr/local/lib/
+          sudo mv janet-v1.41.2-linux/bin/janet /usr/local/bin/
+          sudo mv janet-v1.41.2-linux/lib/* /usr/local/lib/
 
       - name: Install jpm
         run: |
@@ -58,11 +58,11 @@ jobs:
         include:
           - os: ubuntu-latest
             janet_url: https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-linux-x64.tar.gz
-            janet_dir: janet-v1.41.2-linux-x64
+            janet_dir: janet-v1.41.2-linux
             platform: linux-x86_64
           - os: macos-latest
             janet_url: https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-macos-aarch64.tar.gz
-            janet_dir: janet-v1.41.2-macos-aarch64
+            janet_dir: janet-v1.41.2-macos
             platform: macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
