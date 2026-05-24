@@ -1,20 +1,18 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project: slynk-client / cli-client
+  Language: Janet-lang
+  Purpose: CLI tool for AI agents to evaluate Common Lisp forms against a running Slynk server
+  Command name: slyc
+  Protocol: Slynk wire protocol (TCP, length-prefixed s-expressions)
+  Startup: Must be fast (cold-start per invocation, ~ms)
+  Platform: Linux first, cross-platform later
+  Output: Clean text for AI agent consumption (stdout=result, stderr=infra errors, exit codes)
+  Repository: /home/gal/code/slynk-client/cli-client
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  design:
+    - Reference exact wire protocol functions/messages from slynk-rpc.lisp
+    - Include ASCII protocol diagrams
+    - Cover auth, timeout, error handling, exit codes
