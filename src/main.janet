@@ -55,7 +55,7 @@
   (net/flush stream))
 
 (defn- send-eval [stream form-str pkg id]
-  (def wrapped (string/format "(slynk:eval-and-grab-output %q)" form-str))
+  (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %q))" form-str))
   (def msg (string/format "(:emacs-rex %s %q t %d)" wrapped pkg id))
   (write-wire stream msg))
 

@@ -36,18 +36,21 @@ fi
 
 echo ""
 echo "--- Starting Slynk server on port $PORT ---"
-# Run SBCL with a pipe to keep it alive
+# Use fifo to keep SBCL stdin open so it stays alive after --eval forms
 mkfifo /tmp/slynk-pipe-$$ 2>/dev/null || true
+# Keep the fifo open for writing so SBCL doesn't get EOF (must background first)
+(sleep 9999 > /tmp/slynk-pipe-$$) &
+FIFO_PID=$!
 sbcl --noinform --eval '(ql:quickload :slynk :silent t)' \
-     --eval "(slynk:create-server :port $PORT :dont-close nil)" \
+     --eval "(slynk:create-server :port $PORT :dont-close t)" \
      --eval '(format t "~&SERVER_READY~%")' \
      --eval '(force-output)' \
      < /tmp/slynk-pipe-$$ &
 SPID=$!
 # Wait for server to be ready or timeout
-for i in $(seq 1 10); do
+for i in $(seq 1 30); do
     sleep 1
-    if lsof -i :$PORT -P 2>/dev/null | grep -q LISTEN; then
+    if ss -tlnp 2>/dev/null | grep -q "$PORT" || nc -z 127.0.0.1 $PORT 2>/dev/null; then
         echo "  Server ready (port $PORT)"
         break
     fi
@@ -59,7 +62,7 @@ done
 echo "  Server PID: $SPID"
 
 # Quick check if port is open
-if ss -tlnp | grep -q "$PORT"; then
+if ss -tlnp 2>/dev/null | grep -q "$PORT" || nc -z 127.0.0.1 $PORT 2>/dev/null; then
     pass "Slynk server is listening"
 else
     fail "Slynk server" "port $PORT not listening"
@@ -112,9 +115,8 @@ else
 fi
 
 # Cleanup
-echo "" > /tmp/slynk-pipe-$$ 2>/dev/null || true
-sleep 1
 kill $SPID 2>/dev/null || true
+kill $FIFO_PID 2>/dev/null || true
 rm -f /tmp/slynk-pipe-$$
 echo "=== Results: $PASS passed, $FAIL failed ==="
 [ $FAIL -eq 0 ] || exit 1
