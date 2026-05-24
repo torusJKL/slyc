@@ -89,7 +89,7 @@ jobs:
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
-          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}
+          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
           path: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
 
   release:
