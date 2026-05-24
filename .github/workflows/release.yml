@@ -71,7 +71,7 @@ jobs:
       - name: Install Janet
         run: |
           curl -LO ${{ matrix.janet_url }}
-          tar -xzf ${{ matrix.janet_dir }}.tar.gz
+          tar -xzf $(basename ${{ matrix.janet_url }})
           echo "$PWD/${{ matrix.janet_dir }}/bin" >> $GITHUB_PATH
 
       - name: Install jpm
