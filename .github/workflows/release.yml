@@ -66,8 +66,9 @@ jobs:
         run: |
           curl -LO ${{ matrix.janet_url }}
           tar -xzf $(basename ${{ matrix.janet_url }})
-          mkdir -p "$HOME/.local/bin"
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/include/janet"
           cp "$PWD/${{ matrix.janet_dir }}/bin/janet" "$HOME/.local/bin/"
+          cp "$PWD/${{ matrix.janet_dir }}/include/janet.h" "$HOME/.local/include/janet/"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install jpm
