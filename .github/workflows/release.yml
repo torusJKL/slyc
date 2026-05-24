@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sbcl rlwrap
+
+      - name: Install Janet
+        run: |
+          curl -LO https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-linux-x64.tar.gz
+          tar -xzf janet-v1.41.2-linux-x64.tar.gz
+          sudo mv janet-v1.41.2-linux-x64/bin/janet /usr/local/bin/
+          sudo mv janet-v1.41.2-linux-x64/lib/* /usr/local/lib/
+
+      - name: Install jpm
+        run: |
+          git clone --depth=1 https://github.com/janet-lang/jpm.git
+          cd jpm
+          sudo janet bootstrap.janet
+
+      - name: Setup Quicklisp and Slynk
+        run: |
+          curl -O https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --noinform --load quicklisp.lisp \
+               --eval '(quicklisp-quickstart:install :path "~/.quicklisp")' \
+               --eval '(load "~/.quicklisp/setup.lisp")' \
+               --eval '(ql:quickload :slynk :silent t)' \
+               --eval '(quit)'
+          echo '(load "~/.quicklisp/setup.lisp")' >> ~/.sbclrc
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Run tests
+        run: just test
+
+  build:
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            janet_url: https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-linux-x64.tar.gz
+            janet_dir: janet-v1.41.2-linux-x64
+            platform: linux-x86_64
+          - os: macos-latest
+            janet_url: https://github.com/janet-lang/janet/releases/download/v1.41.2/janet-v1.41.2-macos-aarch64.tar.gz
+            janet_dir: janet-v1.41.2-macos-aarch64
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Janet
+        run: |
+          curl -LO ${{ matrix.janet_url }}
+          tar -xzf ${{ matrix.janet_dir }}.tar.gz
+          echo "$PWD/${{ matrix.janet_dir }}/bin" >> $GITHUB_PATH
+
+      - name: Install jpm
+        run: |
+          git clone --depth=1 https://github.com/janet-lang/jpm.git
+          cd jpm
+          mkdir -p "$HOME/.local/bin"
+          PREFIX="$HOME/.local" janet bootstrap.janet
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Build slyc
+        run: jpm build
+
+      - name: Package binary
+        run: tar -czf "slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz" -C build slyc
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
+          path: slyc-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
+
+  release:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all archives
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            /^## / {if (found) exit; if ($2 == ver) found = 1}
+            found
+          ' CHANGELOG.md > release-notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.tar.gz
+          body_path: release-notes.md
