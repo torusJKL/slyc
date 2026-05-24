@@ -1,8 +1,11 @@
 # slyc — Slynk CLI client for AI agents
 
-`slyc` is a command-line client for [Slynk](https://github.com/joaotavora/sly), the Common Lisp IDE server used by [SLY](https://github.com/joaotavora/sly). It sends a single Lisp form to a running Slynk server and returns the result as plain text.
+`slyc` is a command-line client for [Slynk](https://github.com/joaotavora/sly), the Common Lisp IDE server.
+It sends a single Lisp form to a running Slynk server and returns the result as plain text.
 
-Designed for AI agents (Claude Code, Codex, OpenCode) that need fast, one-shot evaluation of Lisp forms on a live image.
+Designed for AI agents (Claude Code, OpenCode, Pi, etc.) that need fast, one-shot evaluation of Lisp forms on a live image.
+
+Source repository: [github.com/torusJKL/slyc](https://github.com/torusJKL/slyc)
 
 ## Features
 
@@ -29,7 +32,7 @@ slyc -p 4005 "(format t \"hello, ~a\" :world)"
 slyc --package CL-USER "(find-package :cl)"
 
 # Timeout (seconds)
-slyc --timeout 10 "(loop for i from 1 to 1000000 collect i)"
+slyc --timeout 5 "(sleep 10)"
 
 # Remote host
 slyc --host 10.0.0.1 --port 7889 "(machine-instance)"
@@ -54,18 +57,13 @@ janet src/main.janet "(+ 1 2)"
 ## Build
 
 ```bash
-jpm build        # → build/slyc (native ELF binary, ~900KB)
-```
-
-Or run directly from source:
-
-```bash
-janet src/main.janet "(+ 1 2)"
+jpm build        # → build/slyc (native binary)
 ```
 
 ### What is built
 
-A single `src/main.janet` (~150 lines) with no external dependencies. The Slynk wire protocol, TCP connection handling, CLI argument parsing, and response formatting are all implemented using Janet's standard library (built-in `net/`, `parse`, `string/format`).
+A single `src/main.janet` (~150 lines) with no external dependencies.
+The Slynk wire protocol, TCP connection handling, CLI argument parsing, and response formatting are all implemented using Janet's standard library (built-in `net/`, `parse`, `string/format`).
 
 ## Protocol
 
@@ -80,7 +78,7 @@ Messages are wrapped in `slynk:eval-and-grab-output` so the form string is re-re
 ## Requirements
 
 - **Build**: [Janet](https://janet-lang.org) ≥ 1.30 + `jpm` (for native binary) or just Janet (for script mode)
-- **Server**: A running Slynk server (start with `M-x sly` or `(slynk:create-server :port 4005)`)
+- **Server**: A running Slynk server
 
 ## Related
 
