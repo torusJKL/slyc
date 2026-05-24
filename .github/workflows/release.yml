@@ -31,7 +31,9 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/janet-lang/jpm.git
           cd jpm
-          sudo janet bootstrap.janet
+          mkdir -p "$HOME/.local/bin"
+          PREFIX="$HOME/.local" janet bootstrap.janet
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Setup Quicklisp and Slynk
         run: |
