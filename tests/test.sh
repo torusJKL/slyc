@@ -3,6 +3,7 @@
 
 cd "$(dirname "$0")"
 
+SBCL="${SBCL:-sbcl}"
 PORT=17892
 CLIENT="janet ../src/main.janet"
 PASS=0
@@ -41,7 +42,7 @@ mkfifo /tmp/slynk-pipe-$$ 2>/dev/null || true
 # Keep the fifo open for writing so SBCL doesn't get EOF (must background first)
 (sleep 9999 > /tmp/slynk-pipe-$$) &
 FIFO_PID=$!
-sbcl --noinform --eval '(ql:quickload :slynk :silent t)' \
+$SBCL --noinform --eval '(ql:quickload :slynk :silent t)' \
      --eval "(slynk:create-server :port $PORT :dont-close t)" \
      --eval '(format t "~&SERVER_READY~%")' \
      --eval '(force-output)' \

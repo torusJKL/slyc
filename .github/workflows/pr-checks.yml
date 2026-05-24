@@ -31,6 +31,7 @@ jobs:
                --eval '(load "~/.quicklisp/setup.lisp")' \
                --eval '(ql:quickload :slynk :silent t)' \
                --eval '(quit)'
+          echo '(load "~/.quicklisp/setup.lisp")' >> ~/.sbclrc
 
       - name: Install just
         uses: taiki-e/install-action@v2
