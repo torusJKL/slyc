@@ -73,7 +73,7 @@ jobs:
           git clone --depth=1 https://github.com/janet-lang/jpm.git
           cd jpm
           mkdir -p "$HOME/.local/bin"
-          PREFIX="$HOME/.local" janet bootstrap.janet
+          JANET_SYSPATH="$HOME/.local/lib/janet" JANET_MODPATH="$HOME/.local/lib/janet" PREFIX="$HOME/.local" janet bootstrap.janet
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Build slyc
