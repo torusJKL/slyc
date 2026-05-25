@@ -16,8 +16,12 @@
   (print "  -f, --file <path>      Read form from file")
   (print "      --package <pkg>    Package to evaluate in (default: CL-USER)")
   (print "  -t, --timeout <secs>   Read timeout in seconds (default: 30)")
+  (print "      --no-progn         Do not wrap input in (progn ...)")
   (print "      --help             Show this help")
   (print "      --version          Show version")
+  (print)
+  (print "The form input is automatically wrapped in (progn ...) so multiple")
+  (print "top-level forms are all evaluated. Use --no-progn to disable this.")
   (print)
   (print "If <form> is omitted and stdin is not a TTY, the form is read from stdin.")
   (print)
@@ -25,6 +29,7 @@
   (print "  slyc \"(+ 1 2)\"")
   (print "  slyc -f ./my-form.lis")
   (print "  echo \"(+ 1 2)\" | slyc")
+  (print "  echo -e \"(+ 1 2)\\n(* 3 4)\" | slyc")
   (print "  slyc -p 4005 --package CL-USER \"(format t \\\"hello\\\")\"")
   (print "  slyc --timeout 5 \"(sleep 10)\""))
 
@@ -58,6 +63,7 @@
   (var host default-host)
   (var pkg default-package)
   (var timeout default-timeout)
+  (var no-progn false)
   (var form nil)
   (var file-path nil)
   (var i 1)
@@ -71,6 +77,7 @@
       (or (= arg "--file") (= arg "-f")) (do (++ i) (set file-path (get argv i)))
       (= arg "--package") (do (++ i) (set pkg (get argv i)))
       (or (= arg "--timeout") (= arg "-t")) (do (++ i) (set timeout (scan-number (get argv i) 10)))
+      (= arg "--no-progn") (set no-progn true)
       (do (set form arg) (break)))
     (++ i))
   (cond
@@ -85,7 +92,7 @@
         (eprint "error: no form provided")
         (print-usage)
         (os/exit 2))))
-  {:port port :host host :package pkg :timeout timeout :form form})
+  {:port port :host host :package pkg :timeout timeout :form form :no-progn no-progn})
 
 (defn- write-wire [stream sexpr]
   (def octets (string sexpr))
@@ -94,8 +101,10 @@
   (net/write stream octets)
   (net/flush stream))
 
-(defn- send-eval [stream form-str pkg id]
-  (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %q))" form-str))
+(defn- send-eval [stream form-str pkg id &opt no-progn]
+  (def flat-str (string/replace-all "\n" " " form-str))
+  (def progn-form (if no-progn flat-str (string/format "(progn %s)" flat-str)))
+  (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %q))" progn-form))
   (def msg (string/format "(:emacs-rex %s %q t %d)" wrapped pkg id))
   (write-wire stream msg))
 
@@ -195,7 +204,7 @@
       (os/exit 2))
     [true stream]
     (do
-      (send-eval stream form pkg 1)
+      (send-eval stream form pkg 1 (opts :no-progn))
       (process-responses stream timeout))))
 
 (def args (dyn :args))
