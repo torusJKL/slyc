@@ -1,5 +1,15 @@
 #!/usr/bin/env janet
-(def version "0.1.0")
+(defn- load-version []
+  (def f (file/open "project.janet"))
+  (if (nil? f)
+    "unknown"
+    (do
+      (def raw (file/read f :all))
+      (file/close f)
+      (def captured (peg/match ~(sequence (thru ":version") (drop (any (set " \t\r\n\v\f"))) "\"" (capture (some (if-not "\"" 1))) "\"") raw))
+      (if captured (first captured) "unknown"))))
+
+(def version (load-version))
 (def default-port 4005)
 (def default-host "127.0.0.1")
 (def default-package "CL-USER")
