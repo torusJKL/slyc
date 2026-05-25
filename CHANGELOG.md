@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2026-05-25)
+
+### Added
+
+- Version read dynamically from `project.janet` at runtime instead of being hardcoded
+
 ## 0.2.0 (2026-05-25)
 
 ### Added
