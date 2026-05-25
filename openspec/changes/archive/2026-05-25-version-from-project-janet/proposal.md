@@ -10,7 +10,7 @@ The version is currently hardcoded in two places (`src/main.janet:2` says `"0.1.
 
 ## Capabilities
 
-No new capabilities or modified specs — this is a pure build/infrastructure improvement.
+New capability: version-from-project — version is read from `project.janet` at startup and displayed by `--version`.
 
 ## Impact
 
