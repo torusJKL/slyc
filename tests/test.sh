@@ -115,6 +115,109 @@ else
     fail "(list 1 2 3)" "got \"$text\", exit $rc"
 fi
 
+echo ""
+echo "--- Test: stdin pipe (+ 1 2) ---"
+out=$(echo "(+ 1 2)" | $CLIENT --port $PORT 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$text" = "3" ] && [ "$rc" = "0" ]; then
+    pass "stdin pipe (+ 1 2) = 3, exit 0"
+else
+    fail "stdin pipe" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: stdin redirect from file ---"
+tmpf=$(mktemp)
+echo "(+ 1 2)" > "$tmpf"
+out=$($CLIENT --port $PORT < "$tmpf" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+rm -f "$tmpf"
+if [ "$text" = "3" ] && [ "$rc" = "0" ]; then
+    pass "stdin redirect (+ 1 2) = 3, exit 0"
+else
+    fail "stdin redirect" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: empty stdin ---"
+out=$(echo -n "" | $CLIENT --port $PORT 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if echo "$text" | grep -q "no form provided" && [ "$rc" = "2" ]; then
+    pass "empty stdin -> exit 2"
+else
+    fail "empty stdin" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: heredoc with multiple forms ---"
+out=$($CLIENT --port $PORT 2>&1 << 'EOF'
+(+ 1 2)
+(* 3 4)
+EOF
+)
+rc=$?
+if [ "$out" = "12" ] && [ "$rc" = "0" ]; then
+    pass "heredoc multiple forms = 12 (progn), exit 0"
+else
+    fail "heredoc multi" "got \"$out\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: --file with valid form ---"
+tmpf=$(mktemp)
+echo "(+ 1 2)" > "$tmpf"
+out=$($CLIENT --port $PORT -f "$tmpf" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+rm -f "$tmpf"
+if [ "$text" = "3" ] && [ "$rc" = "0" ]; then
+    pass "--file (+ 1 2) = 3, exit 0"
+else
+    fail "--file" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: --file with multiple forms (progn) ---"
+tmpf=$(mktemp)
+printf "(defun a () 1)\n(defun b () 2)\n(a)\n" > "$tmpf"
+out=$($CLIENT --port $PORT --file "$tmpf" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+rm -f "$tmpf"
+if [ "$text" = "1" ] && [ "$rc" = "0" ]; then
+    pass "--file multi form (progn) = 1, exit 0"
+else
+    fail "--file multi" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: --file with non-existent file ---"
+out=$($CLIENT --port $PORT -f "/nonexistent/file-$$.lisp" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if echo "$text" | grep -q "cannot open file" && [ "$rc" = "2" ]; then
+    pass "--file non-existent -> exit 2"
+else
+    fail "--file non-existent" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: --file and positional arg conflict ---"
+tmpf=$(mktemp)
+echo "(+ 1 2)" > "$tmpf"
+out=$($CLIENT --port $PORT -f "$tmpf" "(+ 3 4)" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+rm -f "$tmpf"
+if echo "$text" | grep -q "cannot be used together" && [ "$rc" = "2" ]; then
+    pass "--file with positional arg -> exit 2"
+else
+    fail "--file conflict" "got \"$text\", exit $rc"
+fi
+
 # Cleanup
 kill $SPID 2>/dev/null || true
 kill $FIFO_PID 2>/dev/null || true
