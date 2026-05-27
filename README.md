@@ -75,7 +75,7 @@ The Slynk wire protocol, TCP connection handling, CLI argument parsing, and resp
 
 The form is sent as a string argument to `slynk:eval-and-grab-output`, ensuring symbols are resolved in the correct package (the form is re-read by `read-from-string` with `*package*` bound to the target package). The `--package` flag controls which package the form is evaluated in.
 
-Newlines in the form string are replaced with spaces before sending. This is safe for Lisp code (newline outside of strings is whitespace) but will corrupt string literals containing hard newlines (e.g., `(print "hello\nworld")` uses an escape sequence and is unaffected; only an actual 0x0A byte inside a string literal would be corrupted — extremely rare in practice).
+The form string is escaped for Common Lisp's `read-from-string` before sending: backslashes (`\`) are doubled and double-quotes (`"`) are backslash-escaped. All other characters — including actual newline bytes — pass through literally and are read correctly by the Lisp reader. This means multi-line string literals in heredocs or file input work correctly and produce multi-line output.
 
 ## Requirements
 

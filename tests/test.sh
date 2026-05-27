@@ -218,6 +218,43 @@ else
     fail "--file conflict" "got \"$text\", exit $rc"
 fi
 
+echo ""
+echo "--- Test: multi-line string preserves newlines ---"
+out=$($CLIENT --port $PORT 2>&1 << 'EOF'
+(format t "hello
+world")
+EOF
+)
+rc=$?
+lines=$(echo "$out" | wc -l)
+if [ "$lines" -ge 2 ] && echo "$out" | grep -q "hello" && echo "$out" | grep -q "world" && [ "$rc" = "0" ]; then
+    pass "multi-line output has newlines"
+else
+    fail "multi-line" "got \"$out\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: backslash in string ---"
+out=$($CLIENT --port $PORT '(princ "path\\to\\file")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if echo "$text" | grep -Fq "path\to\file" && [ "$rc" = "0" ]; then
+    pass "backslash in string prints correctly"
+else
+    fail "backslash" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: double-quote in string ---"
+out=$($CLIENT --port $PORT '(princ "he said \"hello\"")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if echo "$text" | grep -Fq 'he said "hello"' && [ "$rc" = "0" ]; then
+    pass "double-quote in string prints correctly"
+else
+    fail "double-quote" "got \"$text\", exit $rc"
+fi
+
 # Cleanup
 kill $SPID 2>/dev/null || true
 kill $FIFO_PID 2>/dev/null || true

@@ -111,11 +111,16 @@
   (net/write stream octets)
   (net/flush stream))
 
+(defn- quote-for-cl-reader [s]
+  (def escaped
+    (string/replace-all "\"" "\\\""
+      (string/replace-all "\\" "\\\\" s)))
+  (string/format "\"%s\"" escaped))
+
 (defn- send-eval [stream form-str pkg id &opt no-progn]
-  (def flat-str (string/replace-all "\n" " " form-str))
-  (def progn-form (if no-progn flat-str (string/format "(progn %s)" flat-str)))
-  (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %q))" progn-form))
-  (def msg (string/format "(:emacs-rex %s %q t %d)" wrapped pkg id))
+  (def progn-form (if no-progn form-str (string/format "(progn %s)" form-str)))
+  (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %s))" (quote-for-cl-reader progn-form)))
+  (def msg (string/format "(:emacs-rex %s %s t %d)" wrapped (quote-for-cl-reader pkg) id))
   (write-wire stream msg))
 
 (defn- send-abort [stream id]
