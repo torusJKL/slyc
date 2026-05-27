@@ -140,7 +140,8 @@
   (def header (read-exactly stream 6 timeout))
   (def len (scan-number header 16))
   (def raw (read-exactly stream len timeout))
-  (parse raw))
+  (def escaped (string/replace-all "\n" "\\n" raw))
+  (parse escaped))
 
 (defn- princ-lisp [x]
   (cond

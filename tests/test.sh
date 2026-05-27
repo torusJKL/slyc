@@ -226,11 +226,43 @@ world")
 EOF
 )
 rc=$?
-lines=$(echo "$out" | wc -l)
-if [ "$lines" -ge 2 ] && echo "$out" | grep -q "hello" && echo "$out" | grep -q "world" && [ "$rc" = "0" ]; then
+if [ "$rc" = "0" ] && echo "$out" | head -1 | grep -q "^hello$" && echo "$out" | sed -n '2p' | grep -q "^world$"; then
     pass "multi-line output has newlines"
 else
     fail "multi-line" "got \"$out\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: newline via ~% format directive ---"
+out=$($CLIENT --port $PORT '(format t "hello~%world")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$rc" = "0" ] && echo "$text" | sed -n '1p' | grep -q "^hello$" && echo "$text" | sed -n '2p' | grep -q "^world$" && echo "$text" | sed -n '3p' | grep -q "^NIL$"; then
+    pass "newline via ~%: hello on line 1, world on line 2"
+else
+    fail "newline via ~%" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: newline at start of output ---"
+out=$($CLIENT --port $PORT '(format t "~%world")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$rc" = "0" ] && echo "$text" | sed -n '1p' | grep -q "^$" && echo "$text" | sed -n '2p' | grep -q "^world$" && echo "$text" | sed -n '3p' | grep -q "^NIL$"; then
+    pass "newline at start: blank line then world"
+else
+    fail "newline at start" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: multiple newlines in output ---"
+out=$($CLIENT --port $PORT '(format t "line1~%line2~%line3~%")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$rc" = "0" ] && echo "$text" | sed -n '1p' | grep -q "^line1$" && echo "$text" | sed -n '2p' | grep -q "^line2$" && echo "$text" | sed -n '3p' | grep -q "^line3$" && echo "$text" | sed -n '4p' | grep -q "^$" && echo "$text" | sed -n '5p' | grep -q "^NIL$"; then
+    pass "3 newlines: line1, line2, line3, blank, NIL"
+else
+    fail "multiple newlines" "got \"$text\", exit $rc"
 fi
 
 echo ""
