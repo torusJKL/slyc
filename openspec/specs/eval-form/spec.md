@@ -7,6 +7,8 @@ TBD - created by archiving change slyc. Update Purpose after archive.
 
 The system SHALL accept a Lisp form as a string argument, wrap it in `(progn ...)`, and send it to the Slynk server for evaluation. The wrapping ensures that multiple top-level forms in a single input are all evaluated in sequence. The `--no-progn` flag SHALL disable wrapping, sending the raw form string as-is.
 
+The form string SHALL be escaped for Common Lisp's `read-from-string` before embedding: `\` → `\\`, `"` → `\"`, with all other characters (including newlines) passed through literally. The system MUST NOT replace newlines with spaces.
+
 #### Scenario: Simple numeric evaluation
 
 - **WHEN** the user runs `slyc "(+ 1 2)"` against a Slynk server
@@ -21,6 +23,11 @@ The system SHALL accept a Lisp form as a string argument, wrap it in `(progn ...
 
 - **WHEN** the user runs `slyc '(format t "hello, ~a" :world)'` against a Slynk server
 - **THEN** the system SHALL exit with code 0 and print "hello, WORLD" to stdout
+
+#### Scenario: Multi-line printed output
+
+- **WHEN** the user evaluates a form that produces output with embedded newlines (e.g., via a multi-line string literal in the form)
+- **THEN** the system SHALL preserve newlines in the output, printing each line separately
 
 #### Scenario: Form in specific package
 
@@ -81,7 +88,7 @@ The system SHALL print the return value in a human-readable format suitable for 
 
 ### Requirement: Accumulate streamed output from `:write-string` messages
 
-The system SHALL accumulate text from zero or more `:write-string` messages received before the final `:return`, and print that accumulated text to stdout along with the evaluation result.
+The system SHALL accumulate text from zero or more `:write-string` messages received before the final `:return`, and print that accumulated text to stdout along with the evaluation result. The accumulated text SHALL preserve newline characters (0x0A) that appear within any `:write-string` message text.
 
 #### Scenario: Multi-message streamed output
 
@@ -92,4 +99,18 @@ The system SHALL accumulate text from zero or more `:write-string` messages rece
 
 - **WHEN** the user runs a form that produces extremely large output spanning many `:write-string` messages or a single large `:return` body
 - **THEN** the system SHALL correctly print all output without truncation, bounded only by available memory
+
+#### Scenario: Multi-message streamed output with newlines
+
+- **WHEN** the user runs a form that produces multi-line output across multiple `:write-string` messages
+- **THEN** the system SHALL print all accumulated `:write-string` text to stdout in order, with newlines preserved in the concatenated output
+
+### Requirement: Parse server response strings with newlines
+
+The system SHALL correctly parse string values in the s-expression wire format that contain newline characters (0x0A). The parsing mechanism SHALL ensure that newlines in server response strings are preserved as newline characters in the resulting Janet strings, not stripped or lost.
+
+#### Scenario: Newlines in `:return` value strings
+
+- **WHEN** the server sends a `:return` message containing a string value with an embedded newline (e.g., captured output from `format t "hello~%world"`)
+- **THEN** the system SHALL produce a Janet string that contains the newline character at the correct position
 

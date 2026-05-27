@@ -62,7 +62,7 @@ jpm build        # → build/slyc (native binary)
 
 ### What is built
 
-A single `src/main.janet` (~150 lines) with no external dependencies.
+A single `src/main.janet` with no external dependencies.
 The Slynk wire protocol, TCP connection handling, CLI argument parsing, and response formatting are all implemented using Janet's standard library (built-in `net/`, `parse`, `string/format`).
 
 ## Protocol
