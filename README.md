@@ -82,6 +82,13 @@ The form string is escaped for Common Lisp's `read-from-string` before sending: 
 - **Build**: [Janet](https://janet-lang.org) ≥ 1.30 + `jpm` (for native binary) or just Janet (for script mode)
 - **Server**: A running Slynk server
 
+## AI agent skill
+
+[`doc/SKILL.md`](doc/SKILL.md) is a ready-to-copy skill file that teaches AI agents when and how to use `slyc`. Copy it to your project depending on your agent:
+
+- **Claude Code** — copy to `.claude/skills/slyc/SKILL.md`
+- **OpenCode, Pi, Codex** — copy to `.agents/skills/slyc/SKILL.md`
+
 ## Related
 
 - [Slynk](https://github.com/joaotavora/sly) — the Common Lisp server
