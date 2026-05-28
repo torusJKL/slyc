@@ -73,7 +73,7 @@ The Slynk wire protocol, TCP connection handling, CLI argument parsing, and resp
 2. Send a length-prefixed s-expression message (`:emacs-rex`)
 3. Read responses until a `:return` message is received
 
-The form is sent as a string argument to `slynk:eval-and-grab-output`, ensuring symbols are resolved in the correct package (the form is re-read by `read-from-string` with `*package*` bound to the target package). The `--package` flag controls which package the form is evaluated in.
+The form is sent as a string argument to `slynk:eval-and-grab-output`, ensuring symbols are resolved in the correct package (the form is re-read by `read-from-string` with `*package*` bound to the target package). The `--package` flag controls which package the form is evaluated in; when omitted, `nil` is sent and the Slynk server uses its own default package.
 
 The form string is escaped for Common Lisp's `read-from-string` before sending: backslashes (`\`) are doubled and double-quotes (`"`) are backslash-escaped. All other characters — including actual newline bytes — pass through literally and are read correctly by the Lisp reader. This means multi-line string literals in heredocs or file input work correctly and produce multi-line output.
 
