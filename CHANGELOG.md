@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.1 (2026-05-28)
+
+### Changed
+
+- Remove `CL-USER` default package, defer to the server's default package instead
+
+## 0.3.0 (2026-05-27)
+
+### Fixed
+
+- Preserve newlines in string literals with proper Common Lisp escaping
+- Preserve newlines in server response strings (`write-string` messages)
+
+### Added
+
+- Reference `SKILL.md` for AI agents using the tool
+
 ## 0.2.1 (2026-05-25)
 
 ### Added

@@ -66,7 +66,7 @@ slyc --timeout 5 "(sleep 10)"
 |------|-------|---------|-------------|
 | `--port` | `-p` | `4005` | Slynk server port |
 | `--host` | `-h` | `127.0.0.1` | Slynk server host |
-| `--package` | | `CL-USER` | Package to evaluate in |
+| `--package` | | `(server default)` | Package to evaluate in |
 | `--timeout` | `-t` | `30` | Read timeout in seconds |
 | `--file` | `-f` | | Read form from file (mutually exclusive with positional form) |
 | `--no-progn` | | `false` | Do not wrap input in `(progn ...)` |

@@ -12,7 +12,7 @@
 (def version (load-version))
 (def default-port 4005)
 (def default-host "127.0.0.1")
-(def default-package "CL-USER")
+
 (def default-timeout 30)
 
 (defn- print-usage []
@@ -24,7 +24,7 @@
   (print "  -p, --port <port>      Slynk server port (default: 4005)")
   (print "  -h, --host <host>      Slynk server host (default: 127.0.0.1)")
   (print "  -f, --file <path>      Read form from file")
-  (print "      --package <pkg>    Package to evaluate in (default: CL-USER)")
+  (print "      --package <pkg>    Package to evaluate in (default: server default)")
   (print "  -t, --timeout <secs>   Read timeout in seconds (default: 30)")
   (print "      --no-progn         Do not wrap input in (progn ...)")
   (print "      --help             Show this help")
@@ -71,7 +71,7 @@
 (defn- parse-args [argv]
   (var port default-port)
   (var host default-host)
-  (var pkg default-package)
+  (var pkg nil)
   (var timeout default-timeout)
   (var no-progn false)
   (var form nil)
@@ -120,11 +120,12 @@
 (defn- send-eval [stream form-str pkg id &opt no-progn]
   (def progn-form (if no-progn form-str (string/format "(progn %s)" form-str)))
   (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %s))" (quote-for-cl-reader progn-form)))
-  (def msg (string/format "(:emacs-rex %s %s t %d)" wrapped (quote-for-cl-reader pkg) id))
+  (def pkg-str (if pkg (quote-for-cl-reader pkg) "nil"))
+  (def msg (string/format "(:emacs-rex %s %s t %d)" wrapped pkg-str id))
   (write-wire stream msg))
 
 (defn- send-abort [stream id]
-  (def msg (string/format "(:emacs-rex (slynk:invoke-nth-restart 0) \"CL-USER\" t %d)" id))
+  (def msg (string/format "(:emacs-rex (slynk:invoke-nth-restart 0) nil t %d)" id))
   (write-wire stream msg))
 
 (defn- read-exactly [stream n timeout]

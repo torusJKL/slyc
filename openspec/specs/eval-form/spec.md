@@ -9,6 +9,8 @@ The system SHALL accept a Lisp form as a string argument, wrap it in `(progn ...
 
 The form string SHALL be escaped for Common Lisp's `read-from-string` before embedding: `\` → `\\`, `"` → `\"`, with all other characters (including newlines) passed through literally. The system MUST NOT replace newlines with spaces.
 
+When no `--package` flag is given, the system SHALL send an unquoted `nil` as the package in the `:emacs-rex` message, instructing Slynk to use its own default package. When `--package` is given, the system SHALL send the specified package as a quoted string, exactly as before.
+
 #### Scenario: Simple numeric evaluation
 
 - **WHEN** the user runs `slyc "(+ 1 2)"` against a Slynk server
@@ -32,7 +34,12 @@ The form string SHALL be escaped for Common Lisp's `read-from-string` before emb
 #### Scenario: Form in specific package
 
 - **WHEN** the user runs `slyc --package CL-USER "(find-package :cl)"` against a Slynk server
-- **THEN** the system SHALL evaluate the form in the CL-USER package
+- **THEN** the system SHALL evaluate the form in the CL-USER package, sending `"CL-USER"` as a quoted string in the `:emacs-rex` message
+
+#### Scenario: Default evaluation package
+
+- **WHEN** the user runs `slyc "(find-package :cl)"` without specifying `--package`
+- **THEN** the system SHALL send an unquoted `nil` as the package in the `:emacs-rex` message, deferring to the Slynk server's default package
 
 #### Scenario: Opt-out via `--no-progn`
 
