@@ -94,6 +94,17 @@ else
 fi
 
 echo ""
+echo "--- Test: double-quote in string ---"
+out=$($CLIENT --port $PORT '(princ "he said \"hello\"")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if echo "$text" | grep -Fq 'he said "hello"' && [ "$rc" = "0" ]; then
+    pass "double-quote in string prints correctly"
+else
+    fail "double-quote" "got \"$text\", exit $rc"
+fi
+
+echo ""
 echo "--- Test: (error \"test\") ---"
 out=$($CLIENT --port $PORT '(error "test")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
 rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
@@ -103,6 +114,9 @@ if [ "$rc" = "1" ]; then
 else
     fail "(error \"test\")" "got exit $rc"
 fi
+
+# Give the server a moment to recover from debugger entry
+sleep 0.5
 
 echo ""
 echo "--- Test: (list 1 2 3) ---"
@@ -277,14 +291,67 @@ else
 fi
 
 echo ""
-echo "--- Test: double-quote in string ---"
-out=$($CLIENT --port $PORT '(princ "he said \"hello\"")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+echo "--- Test: --no-debug flag with success ---"
+out=$($CLIENT --no-debug --port $PORT "(+ 1 2)" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
 rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
 text=$(echo "$out" | grep -v "EXIT:")
-if echo "$text" | grep -Fq 'he said "hello"' && [ "$rc" = "0" ]; then
-    pass "double-quote in string prints correctly"
+if [ "$text" = "3" ] && [ "$rc" = "0" ]; then
+    pass "--no-debug (+ 1 2) = 3, exit 0"
 else
-    fail "double-quote" "got \"$text\", exit $rc"
+    fail "--no-debug success" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: --no-debug flag with error ---"
+out=$($CLIENT --no-debug --port $PORT '(error "test")' 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$rc" = "1" ]; then
+    pass "--no-debug (error \"test\") -> exit 1"
+else
+    fail "--no-debug error" "got exit $rc"
+fi
+
+echo ""
+echo "--- Test: piped stdin + error -> batch abort ---"
+out=$(echo '(error "batch")' | $CLIENT --port $PORT 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$rc" = "1" ]; then
+    pass "piped stdin error -> exit 1"
+else
+    fail "piped stdin error" "got exit $rc"
+fi
+
+echo ""
+echo "--- Test: --no-debug does not consume next arg ---"
+out=$($CLIENT --no-debug --port $PORT "(+ 1 2)" 2>&1; rc=$?; echo "EXIT:$rc"; exit $rc)
+rc=$(echo "$out" | grep "EXIT:" | sed 's/EXIT://')
+text=$(echo "$out" | grep -v "EXIT:")
+if [ "$text" = "3" ] && [ "$rc" = "0" ]; then
+    pass "--no-debug does not consume next arg"
+else
+    fail "--no-debug arg consumption" "got \"$text\", exit $rc"
+fi
+
+echo ""
+echo "--- Test: interactive debugger displays menu ---"
+out=$(printf "q\n" | script -q -c "$CLIENT --port $PORT '(error \"interactive-test\")'" /dev/null 2>&1)
+# script doesn't propagate exit codes, so check output content
+rc=0
+if echo "$out" | grep -q "interactive-test" && echo "$out" | grep -q "Restarts:" && echo "$out" | grep -q "slyc-db>"; then
+    pass "interactive debugger shows condition, restarts, and prompt"
+else
+    fail "interactive debugger menu" "output: $out"
+fi
+
+echo ""
+echo "--- Test: interactive debugger handles nested commands ---"
+out=$(printf "bt\nfr 0\nq\n" | script -q -c "$CLIENT --port $PORT 'error'" /dev/null 2>&1)
+if echo "$out" | grep -q "Backtrace:" && echo "$out" | grep -q "slyc-db>"; then
+    pass "bt + fr + q works without hanging"
+else
+    fail "nested commands" "output: $out"
 fi
 
 # Cleanup

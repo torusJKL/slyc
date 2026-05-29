@@ -24,9 +24,10 @@ Use `slyc` when you need to:
 
 Do NOT use `slyc` for:
 
-- Debugger interaction (stepping, inspecting stack frames) — `slyc` aborts on debugger entry
 - Persistent REPL sessions — each invocation is a fresh connection
 - Code generation — `slyc` evaluates, it doesn't write files
+
+(Interactive debugger use from a terminal is supported — see the dedicated section below.)
 
 ## Usage
 
@@ -70,6 +71,7 @@ slyc --timeout 5 "(sleep 10)"
 | `--timeout` | `-t` | `30` | Read timeout in seconds |
 | `--file` | `-f` | | Read form from file (mutually exclusive with positional form) |
 | `--no-progn` | | `false` | Do not wrap input in `(progn ...)` |
+| `--no-debug` | | `false` | Force batch abort on debugger entry (no interactive prompt) |
 | `--help` | | | Show help text |
 | `--version` | | | Show version number |
 
@@ -133,22 +135,22 @@ EOF
 | Code | Meaning | Details |
 |------|---------|---------|
 | 0 | Success | Form evaluated, result printed to stdout |
-| 1 | Lisp error | Form signaled a condition, condition text on stdout |
+| 1 | Lisp error | Form signaled a condition, condition text on stderr |
 | 2 | Connection/protocol error | Server unreachable, wrong port, broken protocol |
 | 124 | Timeout | Form did not complete within `--timeout` seconds |
 
 ### stdout vs stderr
 
-- **stdout**: form result text (both successful return values and Lisp error condition text)
-- **stderr**: infrastructure errors — connection refused, protocol errors, file read errors
-- This means: for exit code 0, read stdout as the result value. For exit code 1, read stdout as the error condition. For exit codes 2 and 124, read stderr for the explanation.
+- **stdout**: form result text (successful return values only)
+- **stderr**: Lisp error conditions, connection errors, protocol errors, file read errors, timeouts
+- This means: for exit code 0, read stdout as the result. For exit codes 1, 2, and 124, read stderr for the explanation.
 
 ### Error handling
 
 ```bash
-# Lisp error → exit 1, condition text on stdout
+# Lisp error → exit 1, condition text on stderr
 $ slyc '(error "my bad")'
-# stdout: my bad
+# stderr: my bad
 # exit: 1
 
 # Connection refused → exit 2, error on stderr
@@ -161,6 +163,87 @@ $ slyc --timeout 2 "(sleep 10)"
 # stderr: timed out after 2 seconds
 # exit: 124
 ```
+
+## Interactive debugger
+
+When the Lisp server enters its debugger (the evaluated form signals a condition), `slyc` can either abort immediately or drop into an interactive debug loop. The behavior depends on the environment:
+
+| Condition | Behavior |
+|-----------|----------|
+| `stdin` is a TTY, `--no-debug` not set | **Interactive** — drops into `slyc-db>` prompt |
+| `stdin` is piped/redirected, or `--no-debug` set | **Batch abort** — sends ABORT restart, prints condition, exits with code 1 |
+
+For AI agents (whose stdin is never a TTY), the debugger is **always non-interactive**: exit code 1 with the condition text on stderr.
+
+### Interactive mode (`slyc-db>`)
+
+When you run `slyc` from a terminal on a form that errors, you see:
+
+```
+<condition-type>: <condition-message>
+
+Restarts:
+0: ABORT — Return to SLIME's top level
+1: CONTINUE — Continue execution
+2: RETRY — Retry the same form
+
+Backtrace (5 frames):
+0: (ERROR "my bad")
+1: (EVAL-TL "my bad")
+2: (SB-INT:EVAL-IN-REVERSE ...)
+...
+
+Commands: N restart | bt backtrace | fr N frame | up/down | e FORM eval | r restarts | q quit | ? help
+slyc-db>
+```
+
+Commands are read line by line from stdin:
+
+| Command | Description |
+|---------|-------------|
+| `<N>` (number) | Invoke restart N from the list (0 = ABORT). If the restart name contains "ABORT", exits with code 1. |
+| `bt [N]` | Show backtrace, N frames deep (default 20). Fetches from the server. |
+| `fr N` | Set current frame to N, show local variables and catch tags. |
+| `up` | Move one frame **up** the stack (toward the error site, frame 0). |
+| `down` | Move one frame **down** the stack (away from the error site). |
+| `e FORM` | Evaluate an arbitrary Lisp form in the lexical context of the current frame. Useful for inspecting locals, calling functions with error-time bindings. |
+| `r` | Reprint the condition, restart list, and first 5 backtrace frames. |
+| `q` | Quit — sends the ABORT restart (equivalent to `0`), exits with code 1. |
+| `?` | Print the full command help text. |
+
+#### Frame navigation
+
+The `current-frame` starts at 0 (the error site). `up` decrements the index (moving toward frame 0), `down` increments it (moving deeper into the call stack). `fr N` jumps directly. When you move to a frame not yet fetched from the server, you see: `[frame not in cache — use bt to fetch]`.
+
+#### Eval in context
+
+The `e FORM` command sends the form as `(progn <form>)` to the server for evaluation in the current frame's lexical scope. Output from `format t` and other printed output is captured and shown inline. If the evaluated form itself signals a condition, the debugger re-enters recursively, allowing nested debugging.
+
+#### Nested debuggers
+
+If a form evaluated via `e` during debugging signals a new condition, `slyc` recursively enters the debugger for the nested condition. This allows debugging inside debugging sessions.
+
+#### Thread awareness
+
+When running in a multi-threaded Lisp, if a `:debug` message arrives from a different thread than the one being debugged, `slyc` prints a warning (`Warning: debugger entered in thread ...`) but still enters the debugger for the new thread.
+
+### `--no-debug` flag
+
+Use `--no-debug` to force batch-abort behavior even when stdin is a TTY. This is useful in scripts or when you want deterministic behavior:
+
+```bash
+slyc --no-debug "(error \"fail\")"
+# → exits 1, condition text on stderr
+```
+
+### Agent behavior summary
+
+For AI agents evaluating code:
+
+- The agent will **never** see the interactive debugger because its stdin is not a TTY
+- On Lisp errors, `slyc` exits with code 1 and the condition text is on stderr
+- The agent should check the exit code: 0 = success (read stdout), 1 = Lisp error (read stderr), 2 = connection error (read stderr), 124 = timeout (read stderr)
+- The `--no-debug` flag is redundant in agent use but can be used for explicit safety
 
 ## Common patterns
 
