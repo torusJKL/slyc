@@ -12,6 +12,7 @@ Source repository: [github.com/torusJKL/slyc](https://github.com/torusJKL/slyc)
 - **One-shot eval**: `slyc "(+ 1 2)"` → stdout `3`, exit 0
 - **Streaming output**: Captures `format t` and other printed output
 - **Error handling**: Lisp errors → exit 1 with condition text
+- **Interactive debugger**: when stdin is a TTY, drops into a debug loop (`slyc-db>`) on Lisp errors — inspect frames, eval in context, invoke restarts; `--no-debug` forces batch abort
 - **Timeout**: configurable via `--timeout` (default 30s, exit 124)
 - **Connection failure**: server not reachable → exit 2 with error on stderr
 - **Cross-platform**: written in [Janet](https://janet-lang.org) (Linux, macOS, Windows)
@@ -36,6 +37,9 @@ slyc --timeout 5 "(sleep 10)"
 
 # Remote host
 slyc --host 10.0.0.1 --port 7889 "(machine-instance)"
+
+# Force batch abort on error (even with TTY stdin)
+slyc --no-debug "(error \"my bad\")"
 ```
 
 ## Exit codes
