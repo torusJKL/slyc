@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 (2026-05-29)
+
+### Added
+
+- Interactive debugger with `slyc-db>` prompt for inspecting and responding to Lisp debugger conditions
+
 ## 0.3.1 (2026-05-28)
 
 ### Changed
