@@ -1,5 +1,6 @@
 #!/usr/bin/env janet
 (defn- load-version []
+  "Read the project version from project.janet via PEG parse of the :version field."
   (def f (file/open "project.janet"))
   (if (nil? f)
     "unknown"
@@ -16,6 +17,7 @@
 (def default-timeout 30)
 
 (defn- print-usage []
+  "Print the command-line usage and option reference."
   (print "slyc - Slynk CLI client for AI agents")
   (print)
   (print "Usage: slyc [options] [<form>]")
@@ -45,12 +47,14 @@
   (print "  slyc --timeout 5 \"(sleep 10)\""))
 
 (defn- chomp [s]
+  "Strip a single trailing newline from string `s`."
   (def str (string s))
   (if (string/has-suffix? "\n" str)
     (string/slice str 0 (dec (length str)))
     str))
 
 (defn- read-form-from-file [path]
+  "Read and return content from file at `path`. Exits with code 2 on error or empty file."
   (def f (file/open path))
   (when (nil? f)
     (eprintf "error: cannot open file: %s" path)
@@ -63,6 +67,7 @@
   content)
 
 (defn- read-form-from-stdin []
+  "Read and return content from stdin. Exits with code 2 if empty."
   (def content (chomp (file/read stdin :all)))
   (when (empty? content)
     (eprint "error: no form provided from stdin")
@@ -70,6 +75,7 @@
   content)
 
 (defn- parse-args [argv]
+  "Parse command-line arguments into an options table. Handles --help, --version, flags, and positional form."
   (var port default-port)
   (var host default-host)
   (var pkg nil)
@@ -108,6 +114,7 @@
   {:port port :host host :package pkg :timeout timeout :form form :no-progn no-progn :no-debug no-debug})
 
 (defn- write-wire [stream sexpr]
+  "Write an s-expression to `stream` using Slynk's length-prefixed wire format (6-char hex header + payload)."
   (def octets (string sexpr))
   (def header (string/format "%06x" (length octets)))
   (net/write stream header)
@@ -115,12 +122,14 @@
   (net/flush stream))
 
 (defn- quote-for-cl-reader [s]
+  "Escape string `s` so it is readable by the Common Lisp reader (escapes backslash and double-quote, wraps in double-quotes)."
   (def escaped
     (string/replace-all "\"" "\\\""
       (string/replace-all "\\" "\\\\" s)))
   (string/format "\"%s\"" escaped))
 
 (defn- send-eval [stream form-str pkg id &opt no-progn]
+  "Send an eval-and-grab-output REX for `form-str` to `stream`. Wraps in (progn ...) unless `no-progn` is set."
   (def progn-form (if no-progn form-str (string/format "(progn %s)" form-str)))
   (def wrapped (string/format "(cl:let ((slynk:*echo-number-alist* nil)) (slynk:eval-and-grab-output %s))" (quote-for-cl-reader progn-form)))
   (def pkg-str (if pkg (quote-for-cl-reader pkg) "nil"))
@@ -128,15 +137,18 @@
   (write-wire stream msg))
 
 (defn- send-raw-rex [stream form id &opt thread]
+  "Send an arbitrary REX `form` to `stream` with no package context. Optionally specify a thread."
   (def thread-str (if thread (string thread) "t"))
   (def msg (string/format "(:emacs-rex %s nil %s %d)" form thread-str id))
   (write-wire stream msg))
 
 (defn- send-abort [stream id]
+  "Send an abort REX (invoke-nth-restart 0) to `stream`."
   (def msg (string/format "(:emacs-rex (slynk:invoke-nth-restart 0) nil t %d)" id))
   (write-wire stream msg))
 
 (defn- read-exactly [stream n timeout]
+  "Read exactly `n` bytes from `stream` with `timeout`. Errors on premature EOF."
   (var buf (buffer/new n))
   (while (< (length buf) n)
     (def result (protect (net/read stream (- n (length buf)) buf timeout)))
@@ -146,6 +158,7 @@
   (string buf))
 
 (defn- read-message [stream timeout]
+  "Read a single Slynk wire message from `stream`: 6-byte hex length header, then payload. Returns parsed s-expression."
   (def header (read-exactly stream 6 timeout))
   (def len (scan-number header 16))
   (def raw (read-exactly stream len timeout))
@@ -153,6 +166,7 @@
   (parse escaped))
 
 (defn- princ-lisp [x]
+  "Convert Janet value `x` to its Lisp printed representation for display."
   (cond
     (string? x) x
     (keyword? x) (string/format ":%s" (string/slice x 1 -1))
@@ -166,10 +180,12 @@
     true (string/format "%q" x)))
 
 (defn- print-legend []
+  "Print the one-line debugger command legend."
   (print)
   (print "Commands: 0-9 restart | bt backtrace | fr N frame | up/down | e FORM eval | r restarts | q quit | ? help"))
 
 (defn- print-help []
+  "Print the full interactive debugger command reference."
   (print)
   (print "Interactive Debugger Commands")
   (print "═════════════════════════════")
@@ -197,11 +213,13 @@
 (var read-until-return nil)
 
 (defn- print-debug-condition [condition]
+  "Print the condition description from a debugger message."
   (print (get condition 0))
   (when (> (length condition) 1)
     (print (get condition 1))))
 
 (defn- print-restarts [restarts]
+  "Print each restart with its numeric index and description."
   (var i 0)
   (each restart restarts
     (def [name desc] restart)
@@ -209,6 +227,7 @@
     (++ i)))
 
 (defn- print-frames [frames]
+  "Print each backtrace frame with its index and description."
   (var i 0)
   (each frame frames
     (def [num desc] frame)
@@ -216,6 +235,7 @@
     (++ i)))
 
 (defn- handle-debugger [stream msg timeout pkg]
+  "Enter the interactive debugger REPL. Reads commands (restart number, bt, fr, up, down, e, q, ?, r) from stdin."
   (def [_ thread level condition restarts frames _conts] msg)
   (var current-frame 0)
   (var frame-cache frames)
@@ -340,6 +360,7 @@
               (break))))))))
 
 (set read-until-return (fn [stream timeout pkg]
+  "Read Slynk messages until a :return message is received. Returns [output-string, return-msg]."
   (var output-buf (buffer/new 64))
   (var return-msg nil)
   (while true
@@ -368,6 +389,7 @@
   [(string output-buf) return-msg]))
 
 (defn- process-responses [stream timeout interactive pkg]
+  "Read and handle all messages from the Slynk server until a :return for id 1 is received. Handles debugger, write-string, and other message types."
   (var aborted false)
   (var output-buf (buffer/new 64))
   (var current-thread nil)
@@ -442,6 +464,7 @@
           (eprintf "warning: unexpected message: %s" (princ-lisp msg)))))))
 
 (defn main [& argv]
+  "CLI entry point. Parse arguments, connect to Slynk server, send the form, and process responses."
   (def opts (parse-args argv))
   (def form (opts :form))
   (def host (opts :host))
