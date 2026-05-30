@@ -33,8 +33,14 @@ jobs:
                --eval '(quit)'
           echo '(load "~/.quicklisp/setup.lisp")' >> ~/.sbclrc
 
+      - name: Install jpm
+        run: |
+          git clone --depth=1 https://github.com/janet-lang/jpm.git
+          cd jpm
+          sudo janet bootstrap.janet
+
       - name: Install testament
-        run: jpm install testament
+        run: sudo jpm install testament
 
       - name: Install just
         uses: taiki-e/install-action@v2
