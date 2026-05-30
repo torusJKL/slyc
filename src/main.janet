@@ -487,6 +487,6 @@
 (def args (dyn :args))
 (def first (get args 0))
 (when (and first
-           (or (string/has-suffix? ".janet" first)
-               (string/has-suffix? ".jimage" first)))
+           (or (string/has-suffix? "main.janet" first)
+               (string/has-suffix? "main.jimage" first)))
   (apply main args))

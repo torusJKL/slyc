@@ -33,6 +33,9 @@ jobs:
                --eval '(quit)'
           echo '(load "~/.quicklisp/setup.lisp")' >> ~/.sbclrc
 
+      - name: Install testament
+        run: jpm install testament
+
       - name: Install just
         uses: taiki-e/install-action@v2
         with:
