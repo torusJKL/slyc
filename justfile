@@ -6,14 +6,14 @@ default:
   @echo "Recipes:"
   @echo "  run         Run slyc from source: just run -- \"(+ 1 2)\""
   @echo "  build       Compile standalone executable → build/slyc"
-  @echo "  test        Run integration tests (requires Slynk server)"
+  @echo "  test        Run unit + integration tests (unit: no server; integration: requires Slynk server)"
   @echo "  clean       Remove build artifacts"
 
 run *args:
   janet src/main.janet {{args}}
 
 test:
-  bash tests/test.sh
+  janet tests/test.janet && bash tests/test.sh
 
 build:
   jpm build
